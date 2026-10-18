@@ -7,7 +7,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+
 from main import inspect_videos, sample_indices  # noqa: E402
+from infer import format_question, parse_answer_letter  # noqa: E402
 
 
 class MainSmokeTests(unittest.TestCase):
@@ -55,6 +57,30 @@ class MainSmokeTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("Question rows loaded: 1", result.stdout)
+
+    def test_answer_letter_parser(self):
+        cases = {
+            "A": "A",
+            "A. because of the visible object": "A",
+            "Answer: B. The scene shows it": "B",
+            "answer - (C)": "C",
+            "D)": "D",
+            "No option can be determined.": "?",
+            "The word apple is present but no label was given.": "?",
+        }
+        for output, expected in cases.items():
+            with self.subTest(output=output):
+                self.assertEqual(parse_answer_letter(output), expected)
+
+    def test_question_prompt_formats_options(self):
+        row = {
+            "question": "Choose one",
+            "options": {"A": "first", "B": "second", "C": "third", "D": "fourth"},
+        }
+        prompt = format_question(row)
+        self.assertIn("Question: Choose one", prompt)
+        self.assertIn("A. first", prompt)
+        self.assertIn("D. fourth", prompt)
 
 
 if __name__ == "__main__":
