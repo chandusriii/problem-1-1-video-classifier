@@ -7,7 +7,7 @@ CHOICE_LABELS = ("A", "B", "C", "D")
 
 
 def parse_answer_letter(text: str) -> str:
-    """Parse one A-D answer conservatively; return '?' if it is ambiguous."""
+    """Parse one A-D answer conservatively; return '?' when ambiguous."""
     stripped = text.strip()
     explicit = re.search(
         r"(?i)\banswer\s*(?::|-|\bis\b)\s*\(?([A-D])\)?(?=\s|[.)]|$)",
