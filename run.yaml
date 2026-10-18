@@ -9,4 +9,4 @@ run_commands:
 
 test_commands: []
 
-notes: "Quality-first smoke test. Dataset preparation downloads the QA manifest and only the video for the first question, not the full ~11.2 GB video collection. SmolVLM2-500M-Video-Instruct weights download from Hugging Face on first use. The observed local smoke test took about 126 seconds including model loading. This is not a full benchmark accuracy result."
+notes: "Quality-first smoke test. Dataset preparation downloads the QA manifest and only the video for the first question; the full ~11.2 GB collection is not downloaded. Model weights download on first use. Local inference took approximately 126 seconds including model loading. This is a smoke test, not a full benchmark."
