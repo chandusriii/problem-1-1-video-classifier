@@ -58,6 +58,7 @@ class MainSmokeTests(unittest.TestCase):
             "A": "A",
             "A. visible object": "A",
             "Answer: B. scene": "B",
+            "Answer is D": "D",
             "answer - (C)": "C",
             "D)": "D",
             "No option can be determined.": "?",
@@ -72,18 +73,27 @@ class MainSmokeTests(unittest.TestCase):
     def test_question_prompt_formats_options(self):
         row = {
             "question": "Choose one",
-            "options": {"A": "first", "B": "second", "C": "third", "D": "fourth"},
+            "options": {"D": "fourth", "B": "second", "A": "first", "C": "third"},
             "answer": "D",
         }
         prompt = format_question(row)
         self.assertIn("Question: Choose one", prompt)
         self.assertIn("A. first", prompt)
+        self.assertIn("B. second", prompt)
+        self.assertIn("C. third", prompt)
         self.assertIn("D. fourth", prompt)
         self.assertNotIn("gold", prompt.lower())
 
     def test_prompt_requires_four_options(self):
         with self.assertRaises(ValueError):
             format_question({"question": "Q?", "options": {"A": "only one"}})
+
+    def test_prompt_rejects_noncanonical_option_labels(self):
+        with self.assertRaises(ValueError):
+            format_question({
+                "question": "Q?",
+                "options": {"W": "one", "X": "two", "Y": "three", "Z": "four"},
+            })
 
 
 if __name__ == "__main__":
