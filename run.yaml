@@ -4,9 +4,9 @@ setup_commands:
 run_commands:
   - "python src/main.py --help"
   - "python -m unittest discover -s tests -v"
-  - "python src/main.py --limit 1"
+  - "python src/infer.py --limit 1 --frames 4"
 
 test_commands:
   - "python -m unittest discover -s tests -v"
 
-notes: "This CPU-first baseline validates question metadata, local video availability, and deterministic frame-sampling utilities. It does not claim model inference or benchmark accuracy."
+notes: "The inference command downloads SmolVLM2-500M-Video-Instruct on first run and requires the QA metadata and associated MP4 under data/qa/test.jsonl and data/videos. The 4-frame, one-question command is a smoke test and may take over 2 minutes on CPU. Do not infer full benchmark accuracy from it."
