@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import time
 import urllib.request
 from pathlib import Path
 from typing import Any
@@ -12,7 +11,7 @@ QA_URL = f"https://huggingface.co/datasets/{DATASET_ID}/resolve/main/qa/test.jso
 
 
 def load_questions(local_path: str | None = None) -> list[dict[str, Any]]:
-    """Load JSONL question rows from a local file or the public dataset URL."""
+    """Load question rows from local JSONL or the public Hugging Face dataset."""
     if local_path:
         text = Path(local_path).read_text(encoding="utf-8-sig")
     else:
@@ -25,7 +24,7 @@ def load_questions(local_path: str | None = None) -> list[dict[str, Any]]:
 
 
 def sample_indices(frame_count: int, sample_count: int) -> list[int]:
-    """Return evenly spaced frame indices, including temporal endpoints."""
+    """Choose uniformly spaced frame indices including both endpoints."""
     if frame_count <= 0:
         return []
     if sample_count <= 0:
@@ -44,25 +43,18 @@ def inspect_videos(rows: list[dict[str, Any]], video_dir: Path) -> tuple[list[st
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Inspect Video-MME metadata and validate the local video dataset."
+        description="Inspect Video-MME question metadata and validate local video availability."
     )
     parser.add_argument("--qa", help="Optional local path to qa/test.jsonl.")
     parser.add_argument("--video-dir", default="data/videos")
     parser.add_argument("--limit", type=int, default=5, help="Rows to inspect; 0 means all.")
-    parser.add_argument("--help-task", action="store_true", help="Describe current baseline.")
-    parser.add_argument("--check-frames", action="store_true", help="Validate OpenCV frame sampling on available videos.")
-    parser.add_argument("--frames", type=int, default=8, help="Number of uniformly sampled frames for the optional check.")
+    parser.add_argument("--check-frames", action="store_true", help="Decode a few uniformly sampled frames.")
+    parser.add_argument("--frames", type=int, default=8)
     args = parser.parse_args()
-
     if args.limit < 0:
         parser.error("--limit must be >= 0")
     if args.frames < 1:
         parser.error("--frames must be >= 1")
-    if args.help_task:
-        print("This baseline loads Video-MME question metadata and checks local video files.")
-        print("--check-frames exercises uniform frame sampling; it does not perform AI inference.")
-        print("Full video-question-answering inference is not yet implemented.")
-        return 0
 
     try:
         rows = load_questions(args.qa)
@@ -85,20 +77,18 @@ def main() -> int:
         print(f"  video_id={row.get('video_id')}")
 
     if args.check_frames:
-        try:
-            import cv2
-        except ImportError:
-            print("Frame check requires OpenCV. Install requirements.txt first.")
-            return 2
         if not available:
             print("Frame check skipped: no matching local videos were found.")
         else:
+            import cv2
+            import time
+
             video_path = video_dir / f"{available[0]}.mp4"
             capture = cv2.VideoCapture(str(video_path))
             started = time.perf_counter()
             try:
-                frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
-                indices = sample_indices(frame_count, args.frames)
+                total_frames = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
+                indices = sample_indices(total_frames, args.frames)
                 decoded = 0
                 for frame_index in indices:
                     capture.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
@@ -106,12 +96,11 @@ def main() -> int:
                     decoded += int(ok)
             finally:
                 capture.release()
-            elapsed = time.perf_counter() - started
             print(f"Frame check video: {video_path.name}")
             print(f"Target frames: {len(indices)}; decoded frames: {decoded}")
-            print(f"Frame sampling/decoding time: {elapsed:.3f} sec")
+            print(f"Frame sampling/decoding time: {time.perf_counter() - started:.3f} sec")
 
-    print("Baseline status: metadata and preprocessing checks only; no model accuracy is claimed.")
+    print("Use src/infer.py for model inference; this command is metadata inspection.")
     return 0
 
 
