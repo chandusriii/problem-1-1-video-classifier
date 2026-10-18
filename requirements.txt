@@ -1,5 +1,4 @@
 torch>=2.2
-torchvision>=0.17
 transformers>=5.0
 accelerate>=1.0
 opencv-python>=4.10
