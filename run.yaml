@@ -4,9 +4,10 @@ setup_commands:
 run_commands:
   - "python src/main.py --help"
   - "python -m unittest discover -s tests -v"
-  - "python src/infer.py --limit 1 --frames 4"
+  - "python -c \"from huggingface_hub import hf_hub_download; import pathlib; pathlib.Path('data/qa').mkdir(parents=True, exist_ok=True); p=hf_hub_download(repo_id='aintropy-ai/video-mme-sample10', filename='qa/test.jsonl', repo_type='dataset', local_dir='.'); print('QA metadata:', p)\""
+  - "python src/infer.py --qa data/qa/test.jsonl --video-dir data/videos --limit 1 --frames 4"
 
 test_commands:
   - "python -m unittest discover -s tests -v"
 
-notes: "The inference command downloads SmolVLM2-500M-Video-Instruct on first run and requires the QA metadata and associated MP4 under data/qa/test.jsonl and data/videos. The 4-frame, one-question command is a smoke test and may take over 2 minutes on CPU. Do not infer full benchmark accuracy from it."
+notes: "CPU smoke test using SmolVLM2-500M-Video-Instruct. Requires the dataset QA manifest and referenced MP4 files under data/videos. The sample videos total about 11.2 GB; the full video collection is not included in the repository. Inference may take multiple minutes per question on CPU. One-question accuracy is not a reliable benchmark estimate."
