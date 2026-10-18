@@ -1,10 +1,12 @@
 setup_commands:
-  - "pip install -r requirements.txt"
+  - "python -m pip install -r requirements.txt"
 
 run_commands:
   - "python src/main.py --help"
+  - "python -m unittest discover -s tests -v"
   - "python src/main.py --limit 1"
 
-test_commands: []
+test_commands:
+  - "python -m unittest discover -s tests -v"
 
-notes: "Initial CPU-first smoke-test stage. The command retrieves the small question metadata file but does not download video assets or load model weights. Model inference must be added and validated before final submission."
+notes: "This CPU-first baseline validates question metadata, local video availability, and deterministic frame-sampling utilities. It does not claim model inference or benchmark accuracy."
