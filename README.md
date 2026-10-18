@@ -1,23 +1,24 @@
-# Problem 1.1: Video Classifier
+# LiteVideo — Video-Type Classifier for Adaptive Chunking
 
-This fork contains a CPU-first video-question-answering baseline using SmolVLM2-500M-Video-Instruct. The assessment instructions are preserved below.
+This project targets fast video-level classification so a downstream video index can select an appropriate chunking policy. The current write-up proposes classes, lightweight feature engineering, a deployment architecture, and an evaluation plan.
 
-## Solution quick links
-- Implementation: [`src/infer.py`](src/infer.py)
-- Lightweight answer parsing and prompt validation: [`src/inference_utils.py`](src/inference_utils.py)
-- Dataset preparation: [`src/prepare_dataset.py`](src/prepare_dataset.py)
-- Tests: [`tests/`](tests/)
-- Method, measured smoke test, and limitations: [`docs/README.md`](docs/README.md)
-- Exact evaluator commands: [`run.yaml`](run.yaml)
+> **Implementation status:** The inference code currently contains a SmolVLM2 video-question-answering smoke test. It is not yet the requested trained video-type classifier because the supplied sample metadata does not provide labels for the proposed video-type categories. The write-up distinguishes the design proposal from the implemented, tested code.
 
-## Submission instructions
+## Project files
+- [Design, feature engineering, chunking policy, deployment, evaluation plan](docs/README.md)
+- [Question metadata inspection CLI](src/main.py)
+- [Video QA inference smoke test](src/infer.py)
+- [Answer parsing and prompt validation](src/inference_utils.py)
+- [Selective dataset preparation](src/prepare_dataset.py)
+- [Run commands](run.yaml)
+- [Unit tests](tests/)
+- [GitHub Actions test workflow](.github/workflows/tests.yml)
 
-1. Install the **AIntropy Grader Bot** GitHub App (https://github.com/apps/aintropy-grader-bot) and grant it access to your fork, if you haven't already — we can't evaluate your submission without this.
-2. Put your code under `src/`.
-3. Put your write-up under `docs/` — markdown, slides, a notebook, or another format of your choosing are all fine, as long as it's committed in this repo.
-4. Fill in `run.yaml` with the **exact** commands needed to set up and run your code. We run these commands exactly as written to evaluate your submission — this is the one part of the submission we read literally, not loosely: if `run.yaml` doesn't work, we can't see your code run.
-5. Push to your own fork's default branch any time during your test's time limit. No pull request is needed or expected.
+## Quick local checks
+```bash
+python -m unittest discover -s tests -v
+python src/main.py --help
+```
 
-Once you start the test you have until your test's time limit to complete the assignment — see your invitation email for the exact duration. We ignore any commits pushed to your repo after that.
+The full video sample totals approximately 11.2 GB. Dataset preparation downloads only the video files needed for selected questions. The QA smoke test downloads model weights from Hugging Face on first use.
 
-Questions? careers@aintropy.ai
