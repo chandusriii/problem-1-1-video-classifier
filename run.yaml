@@ -10,4 +10,4 @@ run_commands:
 test_commands:
   - "python -m unittest discover -s tests -v"
 
-notes: "The one-question inference command is a reproducibility smoke test, not a full benchmark. It downloads only the QA manifest and the first referenced MP4, then downloads SmolVLM2-500M-Video-Instruct weights on first use. CPU inference took about 126 seconds including model loading locally. No overall benchmark accuracy is claimed."
+notes: "One-question CPU smoke test. Downloads only the QA manifest and first referenced MP4; model weights download on first use. The local smoke test took about 126 seconds including model loading. This is not a full benchmark result."
