@@ -9,4 +9,4 @@ run_commands:
 
 test_commands: []
 
-notes: "Smoke test: prepares only the first question's video, then runs one inference. Model weights download on first use. On the development CPU the original single-question run took about 126 seconds including load. Not a full benchmark."
+notes: "Smoke test: prepares only the first question's video, then runs one inference. Model weights download on first use. The local first-question run completed in about 126 seconds. This tests reproducibility, not full benchmark accuracy."
