@@ -39,6 +39,8 @@ def load_questions(path: str | None) -> list[dict[str, Any]]:
             raise ValueError(f"Question row {row_number} is missing fields: {sorted(missing)}")
         if str(row["answer"]).strip().upper() not in {"A", "B", "C", "D"}:
             raise ValueError(f"Question row {row_number} has an invalid answer label.")
+        # Validate labels and question text before any expensive model loading.
+        format_question(row)
     return rows
 
 
@@ -123,6 +125,14 @@ def predict(
         "generation_latency_seconds": round(generation_seconds, 4),
         "frames_decoded": len(frames),
     }
+
+
+def percentile(sorted_values: list[float], percentile_value: float) -> float | None:
+    """Nearest-rank percentile without requiring NumPy."""
+    if not sorted_values:
+        return None
+    index = max(0, math.ceil(percentile_value * len(sorted_values)) - 1)
+    return sorted_values[index]
 
 
 def main() -> int:
@@ -212,7 +222,6 @@ def main() -> int:
     decode_times = [float(result["frame_decode_seconds"]) for result in predictions]
     processor_times = [float(result["processor_seconds"]) for result in predictions]
     sorted_latencies = sorted(latencies)
-    p95_index = math.ceil(0.95 * len(sorted_latencies)) - 1 if sorted_latencies else None
     summary = {
         "model": args.model,
         "device": device,
@@ -229,7 +238,7 @@ def main() -> int:
         "mean_processor_seconds": round(statistics.mean(processor_times), 4) if processor_times else None,
         "mean_generation_latency_seconds": round(statistics.mean(latencies), 4) if latencies else None,
         "median_generation_latency_seconds": round(statistics.median(latencies), 4) if latencies else None,
-        "p95_generation_latency_seconds": round(sorted_latencies[p95_index], 4) if p95_index is not None else None,
+        "p95_generation_latency_seconds": round(percentile(sorted_latencies, 0.95), 4) if sorted_latencies else None,
         "model_loading_seconds": round(model_load_seconds, 4),
         "elapsed_seconds_including_model_load": round(time.perf_counter() - pipeline_started, 4),
         "frames_per_question": args.frames,
