@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
+import statistics
 import time
 import urllib.request
 from pathlib import Path
@@ -20,7 +22,7 @@ QA_URL = f"https://huggingface.co/datasets/{DATASET_ID}/resolve/main/qa/test.jso
 
 
 def load_questions(path: str | None) -> list[dict[str, Any]]:
-    """Read JSONL question metadata from disk or the public dataset URL."""
+    """Read and validate the JSONL question manifest."""
     if path:
         text = Path(path).read_text(encoding="utf-8-sig")
     else:
@@ -29,15 +31,19 @@ def load_questions(path: str | None) -> list[dict[str, Any]]:
             text = response.read().decode("utf-8-sig")
     rows = [json.loads(line) for line in text.splitlines() if line.strip()]
     required = {"video_id", "question_id", "question", "options", "answer"}
-    for row_number, row in enumerate(rows, 1):
-        missing = required - set(row)
+    if not rows:
+        raise ValueError("Question manifest is empty.")
+    for row_number, row in enumerate(rows, start=1):
+        missing = required - row.keys()
         if missing:
             raise ValueError(f"Question row {row_number} is missing fields: {sorted(missing)}")
+        if str(row["answer"]).strip().upper() not in {"A", "B", "C", "D"}:
+            raise ValueError(f"Question row {row_number} has an invalid answer label.")
     return rows
 
 
 def sample_video_frames(video_path: Path, count: int) -> list[Image.Image]:
-    """Decode uniformly spaced RGB frames while keeping memory use bounded."""
+    """Decode uniformly spaced RGB frames."""
     if count < 1:
         raise ValueError("Frame count must be positive.")
     capture = cv2.VideoCapture(str(video_path))
@@ -73,7 +79,10 @@ def predict(
     frame_count: int,
     max_new_tokens: int = 48,
 ) -> dict[str, Any]:
+    decode_started = time.perf_counter()
     frames = sample_video_frames(video_path, frame_count)
+    frame_decode_seconds = time.perf_counter() - decode_started
+
     messages = [{
         "role": "user",
         "content": [
@@ -81,15 +90,27 @@ def predict(
             {"type": "text", "text": format_question(row)},
         ],
     }]
+    preprocessing_started = time.perf_counter()
     inputs = processor.apply_chat_template(
-        messages, add_generation_prompt=True, tokenize=True,
-        return_dict=True, return_tensors="pt",
+        messages,
+        add_generation_prompt=True,
+        tokenize=True,
+        return_dict=True,
+        return_tensors="pt",
     ).to(model.device)
-    started = time.perf_counter()
+    processor_seconds = time.perf_counter() - preprocessing_started
+
+    generation_started = time.perf_counter()
     with torch.inference_mode():
-        output_ids = model.generate(**inputs, do_sample=False, max_new_tokens=max_new_tokens)
-    latency = time.perf_counter() - started
-    generated_ids = output_ids[:, inputs["input_ids"].shape[1]:]
+        output_ids = model.generate(
+            **inputs,
+            do_sample=False,
+            max_new_tokens=max_new_tokens,
+        )
+    generation_seconds = time.perf_counter() - generation_started
+
+    prompt_length = inputs["input_ids"].shape[1]
+    generated_ids = output_ids[:, prompt_length:]
     output_text = processor.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
     return {
         "question_id": row["question_id"],
@@ -97,7 +118,9 @@ def predict(
         "prediction": parse_answer_letter(output_text),
         "raw_output": output_text,
         "gold_answer": str(row["answer"]).strip().upper(),
-        "latency_seconds": round(latency, 4),
+        "frame_decode_seconds": round(frame_decode_seconds, 4),
+        "processor_seconds": round(processor_seconds, 4),
+        "generation_latency_seconds": round(generation_seconds, 4),
         "frames_decoded": len(frames),
     }
 
@@ -125,7 +148,7 @@ def main() -> int:
     questions = load_questions(args.qa)
     selected = questions if args.limit == 0 else questions[:args.limit]
     if not selected:
-        raise SystemExit("No question rows found.")
+        raise SystemExit("No question rows selected.")
 
     missing = [
         str(row["video_id"]) for row in selected
@@ -134,14 +157,16 @@ def main() -> int:
     if missing and not args.continue_on_error:
         raise SystemExit(
             f"{len(missing)} required video(s) are missing (first: {missing[0]}). "
-            f"Download required MP4 files to {Path(args.video_dir).resolve()} or pass --continue-on-error."
+            f"Run src/prepare_dataset.py --limit {len(selected)} or pass --continue-on-error."
         )
 
+    pipeline_started = time.perf_counter()
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Model: {args.model}")
     print(f"Device: {device}")
     print(f"Questions selected: {len(selected)}; frames/question: {args.frames}")
     print("Loading model and processor; weights download from Hugging Face on first use.")
+    load_started = time.perf_counter()
     processor = AutoProcessor.from_pretrained(args.model)
     model = AutoModelForImageTextToText.from_pretrained(
         args.model,
@@ -149,12 +174,12 @@ def main() -> int:
         low_cpu_mem_usage=True,
     )
     model.eval()
+    model_load_seconds = time.perf_counter() - load_started
 
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     predictions: list[dict[str, Any]] = []
     skipped = 0
-    run_started = time.perf_counter()
     with output_path.open("w", encoding="utf-8") as stream:
         for index, row in enumerate(selected, start=1):
             video_path = Path(args.video_dir) / f"{row['video_id']}.mp4"
@@ -176,29 +201,37 @@ def main() -> int:
             print(
                 f"[{index}/{len(selected)}] {result['question_id']}: "
                 f"predicted={result['prediction']}, gold={result['gold_answer']}, "
-                f"latency={result['latency_seconds']:.2f}s"
+                f"generation={result['generation_latency_seconds']:.2f}s"
             )
+            print(f"  Model output: {result['raw_output']}")
 
-    latencies = [float(result["latency_seconds"]) for result in predictions]
-    valid = [r for r in predictions if r["prediction"] in {"A", "B", "C", "D"}]
-    correct = sum(r["prediction"] == r["gold_answer"] for r in valid)
-    elapsed = time.perf_counter() - run_started
+    completed = len(predictions)
+    valid = [result for result in predictions if result["prediction"] in {"A", "B", "C", "D"}]
+    correct = sum(result["prediction"] == result["gold_answer"] for result in valid)
+    latencies = [float(result["generation_latency_seconds"]) for result in predictions]
+    decode_times = [float(result["frame_decode_seconds"]) for result in predictions]
+    processor_times = [float(result["processor_seconds"]) for result in predictions]
     sorted_latencies = sorted(latencies)
-    p95_index = max(0, int(0.95 * len(sorted_latencies) + 0.999999) - 1) if sorted_latencies else None
+    p95_index = math.ceil(0.95 * len(sorted_latencies)) - 1 if sorted_latencies else None
     summary = {
         "model": args.model,
         "device": device,
         "questions_requested": len(selected),
-        "questions_completed": len(predictions),
+        "questions_completed": completed,
         "valid_predictions": len(valid),
-        "invalid_predictions": len(predictions) - len(valid),
+        "invalid_predictions": completed - len(valid),
+        "skipped": skipped,
         "correct": correct,
         "accuracy_over_valid_predictions": round(correct / len(valid), 4) if valid else None,
-        "mean_generation_latency_seconds": round(sum(latencies) / len(latencies), 4) if latencies else None,
-        "median_generation_latency_seconds": round(sorted_latencies[len(sorted_latencies)//2], 4) if sorted_latencies else None,
+        "exact_match_accuracy_over_requested": round(correct / len(selected), 4) if selected else None,
+        "valid_prediction_coverage": round(len(valid) / len(selected), 4) if selected else None,
+        "mean_frame_decode_seconds": round(statistics.mean(decode_times), 4) if decode_times else None,
+        "mean_processor_seconds": round(statistics.mean(processor_times), 4) if processor_times else None,
+        "mean_generation_latency_seconds": round(statistics.mean(latencies), 4) if latencies else None,
+        "median_generation_latency_seconds": round(statistics.median(latencies), 4) if latencies else None,
         "p95_generation_latency_seconds": round(sorted_latencies[p95_index], 4) if p95_index is not None else None,
-        "elapsed_seconds_including_model_load": round(elapsed, 4),
-        "skipped": skipped,
+        "model_loading_seconds": round(model_load_seconds, 4),
+        "elapsed_seconds_including_model_load": round(time.perf_counter() - pipeline_started, 4),
         "frames_per_question": args.frames,
         "max_new_tokens": args.max_new_tokens,
     }
@@ -207,7 +240,7 @@ def main() -> int:
     print(json.dumps(summary, indent=2))
     print(f"Predictions saved to: {output_path.resolve()}")
     print(f"Summary saved to: {summary_path.resolve()}")
-    return 0 if predictions else 2
+    return 0 if completed else 2
 
 
 if __name__ == "__main__":
