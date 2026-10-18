@@ -4,11 +4,10 @@ setup_commands:
 run_commands:
   - "python src/main.py --help"
   - "python -m unittest discover -s tests -v"
-  - "python -c \"from huggingface_hub import hf_hub_download; from pathlib import Path; p=Path('data/qa/test.jsonl'); p.parent.mkdir(parents=True, exist_ok=True); downloaded=hf_hub_download(repo_id='aintropy-ai/video-mme-sample10', filename='qa/test.jsonl', repo_type='dataset'); p.write_bytes(Path(downloaded).read_bytes()); print('QA manifest ready:', p)\""
-  - "python -c \"import json, pathlib, urllib.request; p=pathlib.Path('data/qa/test.jsonl'); rows=[json.loads(line) for line in p.read_text(encoding='utf-8-sig').splitlines() if line.strip()]; video_id=str(rows[0]['video_id']); out=pathlib.Path('data/videos'); out.mkdir(parents=True, exist_ok=True); target=out/(video_id+'.mp4'); urllib.request.urlretrieve('https://huggingface.co/datasets/aintropy-ai/video-mme-sample10/resolve/main/videos/'+video_id+'.mp4', str(target)) if not target.exists() else None; print('Video ready:', target)\""
+  - "python -c \"import json, pathlib, urllib.request; qa=pathlib.Path('data/qa/test.jsonl'); qa.parent.mkdir(parents=True, exist_ok=True); url='https://huggingface.co/datasets/aintropy-ai/video-mme-sample10/resolve/main/qa/test.jsonl'; urllib.request.urlretrieve(url, str(qa)) if not qa.exists() else None; rows=[json.loads(line) for line in qa.read_text(encoding='utf-8-sig').splitlines() if line.strip()]; video_id=str(rows[0]['video_id']); out=pathlib.Path('data/videos'); out.mkdir(parents=True, exist_ok=True); video=out/(video_id+'.mp4'); urllib.request.urlretrieve('https://huggingface.co/datasets/aintropy-ai/video-mme-sample10/resolve/main/videos/'+video_id+'.mp4', str(video)) if not video.exists() else None; print('Question metadata and first video prepared:', video_id)\""
   - "python src/infer.py --qa data/qa/test.jsonl --video-dir data/videos --limit 1 --frames 4"
 
 test_commands:
   - "python -m unittest discover -s tests -v"
 
-notes: "The run commands download the QA manifest to data/qa/test.jsonl and only the video needed for the first smoke-test question. SmolVLM2-500M-Video-Instruct weights download on first use. CPU inference took about two minutes per question on the development machine; this is a smoke test, not a full benchmark."
+notes: "Runs one CPU-friendly smoke-test question. Downloads only the QA manifest and first referenced video (not the full 11.2 GB dataset), then downloads model weights from Hugging Face on first inference run. The observed local smoke test took about 126 seconds including model loading. Full benchmark accuracy is not claimed."
