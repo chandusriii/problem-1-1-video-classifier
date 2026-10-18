@@ -1,5 +1,15 @@
 # Problem 1.1: Video Classifier
 
+This fork contains a CPU-first video-question-answering baseline using SmolVLM2-500M-Video-Instruct. The assessment instructions are preserved below.
+
+## Solution quick links
+- Implementation: [`src/infer.py`](src/infer.py)
+- Lightweight answer parsing and prompt validation: [`src/inference_utils.py`](src/inference_utils.py)
+- Dataset preparation: [`src/prepare_dataset.py`](src/prepare_dataset.py)
+- Tests: [`tests/`](tests/)
+- Method, measured smoke test, and limitations: [`docs/README.md`](docs/README.md)
+- Exact evaluator commands: [`run.yaml`](run.yaml)
+
 ## Submission instructions
 
 1. Install the **AIntropy Grader Bot** GitHub App (https://github.com/apps/aintropy-grader-bot) and grant it access to your fork, if you haven't already — we can't evaluate your submission without this.
