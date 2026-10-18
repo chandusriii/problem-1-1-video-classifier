@@ -4,10 +4,11 @@ setup_commands:
 run_commands:
   - "python src/main.py --help"
   - "python -m unittest discover -s tests -v"
-  - "python -c \"from huggingface_hub import hf_hub_download; import pathlib; pathlib.Path('data/qa').mkdir(parents=True, exist_ok=True); p=hf_hub_download(repo_id='aintropy-ai/video-mme-sample10', filename='qa/test.jsonl', repo_type='dataset', local_dir='.'); print('QA metadata:', p)\""
+  - "python -c \"from huggingface_hub import hf_hub_download; from pathlib import Path; Path('data/qa').mkdir(parents=True, exist_ok=True); hf_hub_download(repo_id='aintropy-ai/video-mme-sample10', filename='qa/test.jsonl', repo_type='dataset', local_dir='.'); print('QA manifest ready')\""
+  - "python -c \"import json, pathlib, urllib.request; p=pathlib.Path('data/qa/test.jsonl'); rows=[json.loads(x) for x in p.read_text(encoding='utf-8-sig').splitlines() if x.strip()]; ids=sorted({str(r['video_id']) for r in rows[:1]}); out=pathlib.Path('data/videos'); out.mkdir(parents=True, exist_ok=True); [(urllib.request.urlretrieve('https://huggingface.co/datasets/aintropy-ai/video-mme-sample10/resolve/main/videos/'+i+'.mp4', str(out/(i+'.mp4'))) if not (out/(i+'.mp4')).exists() else None) for i in ids]; print('First-question video ready:', ids)\""
   - "python src/infer.py --qa data/qa/test.jsonl --video-dir data/videos --limit 1 --frames 4"
 
 test_commands:
   - "python -m unittest discover -s tests -v"
 
-notes: "CPU smoke test using SmolVLM2-500M-Video-Instruct. Requires the dataset QA manifest and referenced MP4 files under data/videos. The sample videos total about 11.2 GB; the full video collection is not included in the repository. Inference may take multiple minutes per question on CPU. One-question accuracy is not a reliable benchmark estimate."
+notes: "The run command downloads the metadata and only the video needed by the first smoke-test question. SmolVLM2 model weights download from Hugging Face on first use. CPU inference may take several minutes; this command verifies reproducibility, not full benchmark accuracy."
