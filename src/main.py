@@ -11,13 +11,11 @@ QA_URL = f"https://huggingface.co/datasets/{DATASET_ID}/resolve/main/qa/test.jso
 
 
 def load_questions(local_path: str | None = None) -> list[dict[str, Any]]:
-    """Load question rows from local JSONL or the public Hugging Face dataset."""
+    """Load Video-MME QA metadata for inspection only."""
     if local_path:
         text = Path(local_path).read_text(encoding="utf-8-sig")
     else:
-        request = urllib.request.Request(
-            QA_URL, headers={"User-Agent": "LiteVideo-assessment/1.0"}
-        )
+        request = urllib.request.Request(QA_URL, headers={"User-Agent": "LiteVideo-assessment/1.0"})
         with urllib.request.urlopen(request, timeout=60) as response:
             text = response.read().decode("utf-8-sig")
     return [json.loads(line) for line in text.splitlines() if line.strip()]
@@ -43,7 +41,7 @@ def inspect_videos(rows: list[dict[str, Any]], video_dir: Path) -> tuple[list[st
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Inspect Video-MME question metadata and validate local video availability."
+        description="Inspect Video-MME question metadata and local video availability."
     )
     parser.add_argument("--qa", help="Optional local path to qa/test.jsonl.")
     parser.add_argument("--video-dir", default="data/videos")
@@ -100,7 +98,7 @@ def main() -> int:
             print(f"Target frames: {len(indices)}; decoded frames: {decoded}")
             print(f"Frame sampling/decoding time: {time.perf_counter() - started:.3f} sec")
 
-    print("Use src/infer.py for model inference; this command is metadata inspection.")
+    print("This CLI inspects benchmark metadata; use src/infer.py for video QA.")
     return 0
 
 
