@@ -13,12 +13,12 @@ INTENTS = (
 )
 SCOPES = ("FRAME", "CLIP", "WHOLE_VIDEO", "MULTI_SECTION")
 COMPLEXITIES = ("L1_DIRECT", "L2_RETRIEVAL", "L3_GRAPH")
-TIMESTAMP_RE = re.compile(r"(?<!\\d)(?:\\d{1,2}:)?\\d{1,2}:\\d{2}(?:\\.\\d+)?(?!\\d)")
+TIMESTAMP_RE = re.compile(r"(?<!\d)(?:\d{1,2}:)?\d{1,2}:\d{2}(?:\.\d+)?(?!\d)")
 
 def normalize_query(query: str) -> str:
     if not isinstance(query, str):
         raise TypeError("query must be a string")
-    cleaned = re.sub(r"\\s+", " ", query).strip()
+    cleaned = re.sub(r"\s+", " ", query).strip()
     if not cleaned:
         raise ValueError("query must not be empty")
     return cleaned
@@ -28,26 +28,26 @@ def engineer_query_features(query: str) -> dict[str, Any]:
     text = normalize_query(query)
     lower = text.lower()
     timestamps = TIMESTAMP_RE.findall(text)
-    tokens = re.findall(r"\\b[\\w']+\\b", lower)
-    clauses = len(re.findall(r"[,;]|\\b(?:and|but|while|whereas|although)\\b", lower)) + 1
+    tokens = re.findall(r"\b[\w']+\b", lower)
+    clauses = len(re.findall(r"[,;]|\b(?:and|but|while|whereas|although)\b", lower)) + 1
     cues = {
-        "asks_why": bool(re.search(r"\\bwhy\\b|\\bwhat caused\\b|\\breason for\\b", lower)),
-        "asks_when": bool(re.search(r"\\bwhen\\b|\\bwhat time\\b", lower)),
-        "asks_count": bool(re.search(r"\\bhow many\\b|\\bhow often\\b|\\bcount\\b|\\bnumber of times\\b", lower)),
-        "asks_summary": bool(re.search(r"\\b(summarize|summary|overview|recap|main points)\\b", lower)),
-        "asks_compare": bool(re.search(r"\\b(compare|difference|similar|versus|vs\\.?|change from .* to)\\b", lower)),
-        "asks_ocr": bool(re.search(r"\\b(read|text|written|sign|caption|subtitle|on-screen text)\\b", lower)),
-        "asks_audio": bool(re.search(r"\\b(say|said|says|speak|speaker|transcript|mention|mentions|quote)\\b", lower)),
-        "asks_global": bool(re.search(r"\\b(entire|whole|overall|throughout|in the video|video as a whole|beginning to end|from the beginning to the end)\\b", lower)),
-        "asks_multiple_events": bool(re.search(r"\\b(all|every|each|throughout|repeatedly|again)\\b", lower)),
-        "asks_temporal_relation": bool(re.search(r"\\b(before|after|then|earlier|later|following|until|while)\\b", lower)),
+        "asks_why": bool(re.search(r"\bwhy\b|\bwhat caused\b|\breason for\b", lower)),
+        "asks_when": bool(re.search(r"\bwhen\b|\bwhat time\b", lower)),
+        "asks_count": bool(re.search(r"\bhow many\b|\bhow often\b|\bcount\b|\bnumber of times\b", lower)),
+        "asks_summary": bool(re.search(r"\b(summarize|summary|overview|recap|main points)\b", lower)),
+        "asks_compare": bool(re.search(r"\b(compare|difference|similar|versus|vs\.?|change from .* to)\b", lower)),
+        "asks_ocr": bool(re.search(r"\b(read|text|written|sign|caption|subtitle|on-screen text)\b", lower)),
+        "asks_audio": bool(re.search(r"\b(say|said|says|speak|speaker|transcript|mention|mentions|quote)\b", lower)),
+        "asks_global": bool(re.search(r"\b(entire|whole|overall|throughout|in the video|video as a whole|beginning to end|from the beginning to the end)\b", lower)),
+        "asks_multiple_events": bool(re.search(r"\b(all|every|each|throughout|repeatedly|again)\b", lower)),
+        "asks_temporal_relation": bool(re.search(r"\b(before|after|then|earlier|later|following|until|while)\b", lower)),
         "has_timestamp": bool(timestamps),
-        "asks_visual_attribute": bool(re.search(r"\\b(color|colour|wearing|holding|look like|appear|visible|object|person|car|animal)\\b", lower)),
-        "asks_entity_relation": bool(re.search(r"\\b(relationship|relation|interact|influence|connect|between)\\b", lower)),
+        "asks_visual_attribute": bool(re.search(r"\b(color|colour|wearing|holding|look like|appear|visible|object|person|car|animal)\b", lower)),
+        "asks_entity_relation": bool(re.search(r"\b(relationship|relation|interact|influence|connect|between)\b", lower)),
     }
     return {"normalized_length": len(text), "token_count": len(tokens),
             "clause_count": clauses, "timestamp_count": len(timestamps),
-            "question_word": next((w for w in ("why","when","where","who","how","what") if re.search(rf"\\b{w}\\b", lower)), "none"),
+            "question_word": next((w for w in ("why","when","where","who","how","what") if re.search(rf"\b{w}\b", lower)), "none"),
             **cues}
 
 def _heuristic_predictions(query: str) -> dict[str, str | float]:
@@ -71,23 +71,23 @@ def _heuristic_predictions(query: str) -> dict[str, str | float]:
         intent = "TEMPORAL_LOCALIZATION"
     elif f["asks_global"] and (f["asks_entity_relation"] or f["asks_multiple_events"]):
         intent = "CROSS_SECTION_REASONING"
-    elif f["asks_visual_attribute"] and re.search(r"\\b(frame|image|screen)\\b", text):
+    elif f["asks_visual_attribute"] and re.search(r"\b(frame|image|screen)\b", text):
         intent = "FRAME_RECOGNITION"
     else:
         intent = "GENERAL_VIDEO_QUESTION"
 
     if intent == "VIDEO_SUMMARY":
-        scope = "WHOLE_VIDEO" if re.search(r"\\b(entire|whole|overall|in the video|video as a whole)\\b", text) else "CLIP"
+        scope = "WHOLE_VIDEO" if re.search(r"\b(entire|whole|overall|in the video|video as a whole)\b", text) else "CLIP"
     elif f["has_timestamp"]:
         scope = "FRAME" if intent in {"FRAME_RECOGNITION", "OCR_FRAME_QUERY"} else "CLIP"
     elif intent == "CROSS_SECTION_REASONING":
         scope = "MULTI_SECTION"
     elif intent == "EVENT_COUNTING":
-        scope = "MULTI_SECTION" if f["asks_multiple_events"] or re.search(r"\\bhow many times\\b", text) else "CLIP"
+        scope = "MULTI_SECTION" if f["asks_multiple_events"] or re.search(r"\bhow many times\b", text) else "CLIP"
     elif intent == "CAUSAL_REASONING":
         scope = "MULTI_SECTION" if f["asks_temporal_relation"] or f["asks_entity_relation"] else "CLIP"
     elif intent == "COMPARISON":
-        scope = "MULTI_SECTION" if re.search(r"\\b(first and last|beginning|end|throughout)\\b", text) else "CLIP"
+        scope = "MULTI_SECTION" if re.search(r"\b(first and last|beginning|end|throughout)\b", text) else "CLIP"
     elif f["asks_global"] and f["asks_multiple_events"]:
         scope = "MULTI_SECTION"
     elif intent in {"TRANSCRIPT_LOOKUP", "TEMPORAL_LOCALIZATION"}:
