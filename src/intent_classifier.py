@@ -45,18 +45,14 @@ def engineer_query_features(query: str) -> dict[str, Any]:
         "asks_visual_attribute": bool(re.search(r"\\b(color|colour|wearing|holding|look like|appear|visible|object|person|car|animal)\\b", lower)),
         "asks_entity_relation": bool(re.search(r"\\b(relationship|relation|interact|influence|connect|between)\\b", lower)),
     }
-    return {
-        "normalized_length": len(text), "token_count": len(tokens),
-        "clause_count": clauses, "timestamp_count": len(timestamps),
-        "question_word": next((word for word in ("why", "when", "where", "who", "how", "what") if re.search(rf"\\b{word}\\b", lower)), "none"),
-        **cues,
-    }
+    return {"normalized_length": len(text), "token_count": len(tokens),
+            "clause_count": clauses, "timestamp_count": len(timestamps),
+            "question_word": next((w for w in ("why","when","where","who","how","what") if re.search(rf"\\b{w}\\b", lower)), "none"),
+            **cues}
 
 def _heuristic_predictions(query: str) -> dict[str, str | float]:
     f = engineer_query_features(query)
     text = query.lower()
-
-    # Narrow operations take precedence over broad question forms.
     if f["asks_ocr"]:
         intent = "OCR_FRAME_QUERY"
     elif f["asks_count"]:
@@ -80,12 +76,11 @@ def _heuristic_predictions(query: str) -> dict[str, str | float]:
     else:
         intent = "GENERAL_VIDEO_QUESTION"
 
-    # Scope is separate from complexity.
     if intent == "VIDEO_SUMMARY":
         scope = "WHOLE_VIDEO" if re.search(r"\\b(entire|whole|overall|in the video|video as a whole)\\b", text) else "CLIP"
     elif f["has_timestamp"]:
         scope = "FRAME" if intent in {"FRAME_RECOGNITION", "OCR_FRAME_QUERY"} else "CLIP"
-    elif intent in {"CROSS_SECTION_REASONING"}:
+    elif intent == "CROSS_SECTION_REASONING":
         scope = "MULTI_SECTION"
     elif intent == "EVENT_COUNTING":
         scope = "MULTI_SECTION" if f["asks_multiple_events"] or re.search(r"\\bhow many times\\b", text) else "CLIP"
@@ -108,9 +103,7 @@ def _heuristic_predictions(query: str) -> dict[str, str | float]:
         complexity = "L2_RETRIEVAL"
     else:
         complexity = "L1_DIRECT"
-
-    return {"intent": intent, "scope": scope, "complexity": complexity,
-            "confidence": 0.55, "method": "rules_baseline"}
+    return {"intent": intent, "scope": scope, "complexity": complexity, "confidence": 0.55, "method": "rules_baseline"}
 
 def predict_intent(query: str, model_path: str | Path | None = None) -> dict[str, Any]:
     cleaned = normalize_query(query)
@@ -120,26 +113,25 @@ def predict_intent(query: str, model_path: str | Path | None = None) -> dict[str
         if not path.is_file():
             raise FileNotFoundError(f"Classifier artifact not found: {path}")
         artifact = joblib.load(path)
-        features = artifact["vectorizer"].transform([cleaned])
+        matrix = artifact["vectorizer"].transform([cleaned])
         predictions: dict[str, Any] = {}
         scores = []
         for axis in ("intent", "scope", "complexity"):
             classifier = artifact["classifiers"][axis]
-            probabilities = classifier.predict_proba(features)[0]
-            index = int(probabilities.argmax())
+            probs = classifier.predict_proba(matrix)[0]
+            index = int(probs.argmax())
             predictions[axis] = str(classifier.classes_[index])
-            scores.append(float(probabilities[index]))
+            scores.append(float(probs[index]))
         predictions["confidence"] = round(sum(scores) / len(scores), 4)
         predictions["method"] = "tfidf_logistic_regression"
     else:
         predictions = _heuristic_predictions(cleaned)
-
-    route = {
+    predictions["retrieval_strategy"] = {
         "L1_DIRECT": "DIRECT_OR_TARGETED_LOOKUP",
         "L2_RETRIEVAL": "MULTIMODAL_RETRIEVAL",
         "L3_GRAPH": "GRAPH_RETRIEVAL",
     }[predictions["complexity"]]
-    predictions.update({"query": cleaned, "retrieval_strategy": route})
+    predictions["query"] = cleaned
     predictions["fallback"] = "SAFE_HYBRID_RETRIEVAL" if float(predictions["confidence"]) < 0.45 else None
     return predictions
 
@@ -161,6 +153,7 @@ def load_jsonl_dataset(path: str | Path) -> list[dict[str, Any]]:
                 raise ValueError(f"line {line_number}: unsupported scope {row['scope']!r}")
             if row["complexity"] not in COMPLEXITIES:
                 raise ValueError(f"line {line_number}: unsupported complexity {row['complexity']!r}")
+            row["query"] = normalize_query(row["query"])
             rows.append(row)
     if not rows:
         raise ValueError("dataset has no labelled examples")
