@@ -1,0 +1,25 @@
+{"query":"What color is the car at 00:15?","intent":"FRAME_RECOGNITION","scope":"FRAME","complexity":"L1_DIRECT"}
+{"query":"Read the text on the sign at 01:10.","intent":"OCR_FRAME_QUERY","scope":"FRAME","complexity":"L1_DIRECT"}
+{"query":"What is the person holding at 00:32?","intent":"FRAME_RECOGNITION","scope":"FRAME","complexity":"L1_DIRECT"}
+{"query":"What does the speaker say at 02:30?","intent":"TRANSCRIPT_LOOKUP","scope":"CLIP","complexity":"L2_RETRIEVAL"}
+{"query":"When does the presenter explain neural networks?","intent":"TEMPORAL_LOCALIZATION","scope":"CLIP","complexity":"L2_RETRIEVAL"}
+{"query":"Find the moment where the red car enters the scene.","intent":"TEMPORAL_LOCALIZATION","scope":"CLIP","complexity":"L2_RETRIEVAL"}
+{"query":"Summarize the entire video.","intent":"VIDEO_SUMMARY","scope":"WHOLE_VIDEO","complexity":"L2_RETRIEVAL"}
+{"query":"Give me an overview of the main topics covered in this lecture.","intent":"VIDEO_SUMMARY","scope":"WHOLE_VIDEO","complexity":"L2_RETRIEVAL"}
+{"query":"How many times does the player score?","intent":"EVENT_COUNTING","scope":"MULTI_SECTION","complexity":"L2_RETRIEVAL"}
+{"query":"Count every time the speaker mentions climate change.","intent":"EVENT_COUNTING","scope":"MULTI_SECTION","complexity":"L2_RETRIEVAL"}
+{"query":"Compare the first and last scenes.","intent":"CROSS_SECTION_REASONING","scope":"MULTI_SECTION","complexity":"L3_GRAPH"}
+{"query":"How does the speaker's opinion change from the beginning to the end?","intent":"CROSS_SECTION_REASONING","scope":"MULTI_SECTION","complexity":"L3_GRAPH"}
+{"query":"Why did the person leave after the argument?","intent":"CAUSAL_REASONING","scope":"MULTI_SECTION","complexity":"L3_GRAPH"}
+{"query":"Explain how the earlier event caused the final outcome.","intent":"CAUSAL_REASONING","scope":"MULTI_SECTION","complexity":"L3_GRAPH"}
+{"query":"How are the two characters connected throughout the film?","intent":"CROSS_SECTION_REASONING","scope":"MULTI_SECTION","complexity":"L3_GRAPH"}
+{"query":"What happens before the alarm sounds?","intent":"TEMPORAL_LOCALIZATION","scope":"CLIP","complexity":"L2_RETRIEVAL"}
+{"query":"Who is visible in this frame?","intent":"FRAME_RECOGNITION","scope":"FRAME","complexity":"L1_DIRECT"}
+{"query":"What are the main events in this video?","intent":"VIDEO_SUMMARY","scope":"WHOLE_VIDEO","complexity":"L2_RETRIEVAL"}
+{"query":"Does the athlete fall before or after the whistle?","intent":"TEMPORAL_LOCALIZATION","scope":"MULTI_SECTION","complexity":"L2_RETRIEVAL"}
+{"query":"What is the relationship between the speaker's claim and the final conclusion?","intent":"CROSS_SECTION_REASONING","scope":"MULTI_SECTION","complexity":"L3_GRAPH"}
+{"query":"What is the background music?","intent":"GENERAL_VIDEO_QUESTION","scope":"CLIP","complexity":"L2_RETRIEVAL"}
+{"query":"Which animals appear in the video?","intent":"GENERAL_VIDEO_QUESTION","scope":"WHOLE_VIDEO","complexity":"L2_RETRIEVAL"}
+{"query":"What is the person wearing in the frame at 00:44?","intent":"FRAME_RECOGNITION","scope":"FRAME","complexity":"L1_DIRECT"}
+{"query":"List all locations visited in the video.","intent":"EVENT_COUNTING","scope":"MULTI_SECTION","complexity":"L2_RETRIEVAL"}
+{"query":"Why does the narrator change their explanation later?","intent":"CAUSAL_REASONING","scope":"MULTI_SECTION","complexity":"L3_GRAPH"}

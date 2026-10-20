@@ -1,0 +1,22 @@
+name: User Intent Classifier Tests
+
+on:
+  push:
+    branches: [user-intent-classifier]
+  pull_request:
+    branches: [user-intent-classifier]
+
+jobs:
+  intent-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install classifier dependencies
+        run: python -m pip install -r requirements-intent.txt
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Smoke test CLI
+        run: python scripts/predict_intent.py --query "What color is the car at 00:15?"
