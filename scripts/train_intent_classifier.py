@@ -1,7 +1,12 @@
 """Train lightweight independent intent, scope, and complexity classifiers."""
 from __future__ import annotations
 import argparse
+import sys
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 import joblib
 from sklearn.feature_extraction.text import TfidfVectorizer
