@@ -25,7 +25,7 @@ python scripts/train_intent_classifier.py --data data/intent_examples.jsonl --ou
 python scripts/predict_intent.py --query "How many times does the player score?" --model models/intent_classifier.joblib
 ```
 
-The deterministic rules baseline runs without model weights. The optional trained model uses word/character TF-IDF with Logistic Regression.
+The rules baseline runs without model weights. The optional trained model uses word/character TF-IDF and Logistic Regression.
 
 ## Key files
 
