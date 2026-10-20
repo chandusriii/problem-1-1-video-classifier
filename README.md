@@ -1,24 +1,41 @@
-# LiteVideo — Video-Type Classifier for Adaptive Chunking
+# Adaptive Video RAG — User Intent Classifier
 
-This project targets fast video-level classification so a downstream video index can select an appropriate chunking policy. The current write-up proposes classes, lightweight feature engineering, a deployment architecture, and an evaluation plan.
+This branch implements the **User Intent Classifier** task: classify a user's video-related query so a router can choose a retrieval scope and reasoning path.
 
-> **Implementation status:** The inference code currently contains a SmolVLM2 video-question-answering smoke test. It is not yet the requested trained video-type classifier because the supplied sample metadata does not provide labels for the proposed video-type categories. The write-up distinguishes the design proposal from the implemented, tested code.
+## Design
 
-## Project files
-- [Design, feature engineering, chunking policy, deployment, evaluation plan](docs/README.md)
-- [Question metadata inspection CLI](src/main.py)
-- [Video QA inference smoke test](src/infer.py)
-- [Answer parsing and prompt validation](src/inference_utils.py)
-- [Selective dataset preparation](src/prepare_dataset.py)
-- [Run commands](run.yaml)
-- [Unit tests](tests/)
-- [GitHub Actions test workflow](.github/workflows/tests.yml)
+Predictions are separate across three axes:
 
-## Quick local checks
+- **Intent:** frame recognition, OCR, transcript lookup, summarization, counting, temporal localization, comparison, causal reasoning, cross-section reasoning, or general video question.
+- **Scope:** `FRAME`, `CLIP`, `WHOLE_VIDEO`, or `MULTI_SECTION`.
+- **Complexity:** `L1_DIRECT`, `L2_RETRIEVAL`, or `L3_GRAPH`, inspired by AdaVideoRAG.
+
+The axes are separate: a whole-video question does not always require graph retrieval, and a timestamp-specific question can still need complex reasoning.
+
+## Quick start
+
+Python 3.11+ is recommended.
+
 ```bash
+python -m pip install -r requirements-intent.txt
 python -m unittest discover -s tests -v
-python src/main.py --help
+python scripts/predict_intent.py --query "What color is the car at 00:15?"
+python scripts/predict_intent.py --query "How does the speaker's opinion change from the beginning to the end?"
+python scripts/train_intent_classifier.py --data data/intent_examples.jsonl --output models/intent_classifier.joblib
+python scripts/predict_intent.py --query "How many times does the player score?" --model models/intent_classifier.joblib
 ```
 
-The full video sample totals approximately 11.2 GB. Dataset preparation downloads only the video files needed for selected questions. The QA smoke test downloads model weights from Hugging Face on first use.
+The deterministic rules baseline runs without model weights. The optional trained model uses word/character TF-IDF with Logistic Regression.
 
+## Key files
+
+- `src/intent_classifier.py` — feature engineering, baseline routing, optional model loading.
+- `scripts/train_intent_classifier.py` — lightweight model training.
+- `scripts/predict_intent.py` — CLI inference.
+- `data/intent_examples.jsonl` — seed queries and labels.
+- `tests/test_intent_classifier.py` — unit tests.
+- `docs/INTENT_CLASSIFIER_DESIGN.md` — feature engineering, routing, evaluation, and deployment design.
+
+## Honest evaluation note
+
+The seed examples validate the pipeline; they are not a representative benchmark of a diverse video corpus. Classification confidence from the rules baseline is a fixed heuristic score. The trained model's probability scores also require calibration before production claims. Use a held-out, representative labelled query set before reporting accuracy or reliability.
